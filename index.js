@@ -1,3 +1,5 @@
+import * as Turf from '@turf/turf';
+
 export const ownerShipDisputeColor = 'rgba(254, 74, 62, 0.8)';
 export const ownerShipDisputeOutlineColor = 'rgba(254, 74, 62, 1)';
 export const boundaryDisputeColor = 'rgba(251, 255, 72, 0.8)';
@@ -35,12 +37,7 @@ export const TYPE_SOURCE = {
                     'rgba(58, 151, 173, 1)',
                     'rgba(42, 184, 73, 0.65)',
                 ],
-                'fill-opacity': [
-                    'case',
-                    ['boolean', ['feature-state', 'click'], false],
-                    1,
-                    0.8,
-                ],
+                'fill-opacity': ['case', ['boolean', ['feature-state', 'click'], false], 1, 0.8],
             },
         },
         outline: {
@@ -76,12 +73,7 @@ export const TYPE_SOURCE = {
     fill_by_color_properties: {
         fill: {
             paint: {
-                'fill-opacity': [
-                    'case',
-                    ['has', 'fillOpacity'],
-                    ['get', 'fillOpacity'],
-                    0.8,
-                ],
+                'fill-opacity': ['case', ['has', 'fillOpacity'], ['get', 'fillOpacity'], 0.8],
                 'fill-color': { type: 'identity', property: 'color' },
             },
         },
@@ -101,23 +93,13 @@ export const TYPE_SOURCE = {
     set_color_properties: {
         fill: {
             paint: {
-                'fill-opacity': [
-                    'case',
-                    ['has', 'fillOpacity'],
-                    ['get', 'fillOpacity'],
-                    0.8,
-                ],
+                'fill-opacity': ['case', ['has', 'fillOpacity'], ['get', 'fillOpacity'], 0.8],
                 'fill-color': ['get', 'fillColor'], //{ type: 'identity', property: 'fillColor' },
             },
         },
         outline: {
             paint: {
-                'line-width': [
-                    'case',
-                    ['has', 'lineWidth'],
-                    ['get', 'lineWidth'],
-                    1,
-                ],
+                'line-width': ['case', ['has', 'lineWidth'], ['get', 'lineWidth'], 1],
                 'line-color': ['get', 'outlineColor'],
             },
         },
@@ -216,12 +198,7 @@ const TYPE_POINT = {
     set_color_properties: {
         circle: {
             paint: {
-                'circle-radius': [
-                    'case',
-                    ['has', 'circleRadius'],
-                    ['get', 'circleRadius'],
-                    8,
-                ],
+                'circle-radius': ['case', ['has', 'circleRadius'], ['get', 'circleRadius'], 8],
                 'circle-color': ['get', 'circleColor'],
                 'circle-stroke-width': [
                     'case',
@@ -458,4 +435,135 @@ export const initSource = ({
         source = { ...source, ...TYPE_POINT[pointType] };
     }
     return source;
+};
+export const deepClone = (object = {}) => {
+    return JSON.parse(JSON.stringify(object));
+};
+export const renderPublicPlot = ({
+    claimchains = [],
+    worthwhileNumber = 0,
+    addSource,
+    selectPolygon,
+    firstTime,
+    setFirstTime,
+}) => {
+    let plots = [],
+        lines = [],
+        points = [],
+        allUnion = [];
+    claimchains.forEach((claimchain) => {
+        let colors = getColors({
+            numberClaimchain: claimchain.size,
+        });
+        let unionPolygon;
+
+        claimchain.plots.forEach((plot, index) => {
+            if (claimchain.size >= worthwhileNumber) {
+                if (!index) {
+                    unionPolygon = plot.geojson;
+                } else {
+                    unionPolygon = Turf.union(unionPolygon, plot.geojson);
+                }
+            }
+
+            let _plot = deepClone(plot);
+
+            _plot.properties = {
+                ...colors,
+                fillColor: _plot.isOwnershipDispute
+                    ? ownerShipDisputeColor
+                    : _plot.isBoundaryDispute
+                    ? boundaryDisputeColor
+                    : colors.fillColor,
+                outlineColor: _plot.isOwnershipDispute
+                    ? ownerShipDisputeOutlineColor
+                    : _plot.isBoundaryDispute
+                    ? boundaryDisputeOutlineColor
+                    : colors.outlineColor,
+                claimchainSize: claimchain.size,
+                centroid: plot.centroid,
+            };
+            plots.push(_plot);
+
+            if (claimchain.size > 1) {
+                points.push({
+                    coordinates: _plot.centroid,
+                    properties: {
+                        ...colors,
+                        circleColor: _plot.isOwnershipDispute
+                            ? ownerShipDisputeColor
+                            : _plot.isBoundaryDispute
+                            ? boundaryDisputeColor
+                            : colors.circleColor,
+                    },
+                });
+            }
+        });
+        if (claimchain.size >= worthwhileNumber) {
+            allUnion.push({
+                geojson: unionPolygon,
+                properties: {
+                    outlineColor: 'white',
+                    fillColor: 'transparent',
+                    lineWidth: 2,
+                },
+            });
+        }
+        claimchain.neighbors?.forEach((ids) => {
+            let first = claimchain.plots.find((i) => i._id === ids[0]);
+            let second = claimchain.plots.find((i) => i._id === ids[1]);
+            if (first && second) {
+                lines.push({
+                    coordinates: [first.centroid, second.centroid],
+                    properties: {
+                        ...colors,
+                    },
+                });
+            }
+        });
+    });
+    // render polygon
+    const source = initSource({
+        plots,
+        id: 'all_plot_explore',
+        type: 'set_color_properties',
+    });
+    if (addSource) {
+        addSource(source);
+    }
+
+    if (!firstTime) {
+        setFirstTime(true);
+        selectPolygon(
+            {
+                polygon: null,
+            },
+            true
+        );
+    }
+    if (allUnion.length) {
+        // plots = [...plots,...allUnion]
+        //
+        const source3 = initSource({
+            plots: allUnion,
+            id: 'all_union',
+            type: 'set_color_properties',
+            disabledClick: true,
+            // lineType: 'set_color_properties',
+        });
+        if (addSource) {
+            addSource(source3);
+        }
+    }
+    //point and line
+    const source2 = initSource({
+        points,
+        symbol: true,
+        lines,
+        id: 'all_plot_explore_marker',
+        type: 'set_color_properties',
+    });
+    if (addSource) {
+        addSource(source2);
+    }
 };
