@@ -237,10 +237,6 @@ export const PLOTS_STATUS = [
         value: 5,
         label: 'Default',
     },
-    {
-        value: 6,
-        label: 'Disputed',
-    },
 ];
 
 export const CLAIM_RANK = [
@@ -265,7 +261,32 @@ export const CLAIM_RANK = [
         label: 'Excellent',
     },
 ];
-
+export const CLAIMCHAIN_NUMBER = [
+    {
+        label: 'Claimchain greater than 150 plots',
+        min: 150,
+        max: 100000,
+        value: 1,
+    },
+    {
+        label: 'Claimchain from 101 - 150 plots',
+        min: 100,
+        max: 150,
+        value: 2,
+    },
+    {
+        label: 'Claimchain from 51 - 100 plots',
+        min: 50,
+        max: 100,
+        value: 3,
+    },
+    {
+        label: 'Claimchain less than 50 plots',
+        min: 0,
+        max: 50,
+        value: 4,
+    },
+];
 export const getColors = ({ numberClaimchain, overlap }) => {
     if (overlap) {
         return {
@@ -281,7 +302,7 @@ export const getColors = ({ numberClaimchain, overlap }) => {
             outlineColor: 'rgba(123, 231, 147, 1)',
         };
     }
-    if (numberClaimchain < 10) {
+    if (numberClaimchain < 150) {
         return {
             fillColor: 'rgba(42, 184, 73, 1)',
             outlineColor: 'rgba(123, 231, 147, 1)',
@@ -292,7 +313,7 @@ export const getColors = ({ numberClaimchain, overlap }) => {
             lineColor: 'white',
         };
     }
-    if (numberClaimchain < 50) {
+    if (numberClaimchain >= 150) {
         return {
             fillColor: 'rgba(42, 184, 73, 0.9)',
             outlineColor: 'rgba(123, 231, 147, 1)',
@@ -541,20 +562,18 @@ export const renderPublicPlot = ({
             true
         );
     }
-    if (allUnion.length) {
-        // plots = [...plots,...allUnion]
-        //
-        const source3 = initSource({
-            plots: allUnion,
-            id: 'all_union',
-            type: 'set_color_properties',
-            disabledClick: true,
-            // lineType: 'set_color_properties',
-        });
-        if (addSource) {
-            addSource(source3);
-        }
+
+    const source3 = initSource({
+        plots: allUnion,
+        id: 'all_union',
+        type: 'set_color_properties',
+        disabledClick: true,
+        // lineType: 'set_color_properties',
+    });
+    if (addSource) {
+        addSource(source3);
     }
+
     //point and line
     const source2 = initSource({
         points,
