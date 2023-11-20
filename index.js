@@ -4,6 +4,7 @@ export const ownerShipDisputeColor = 'rgba(254, 74, 62, 0.8)';
 export const ownerShipDisputeOutlineColor = 'rgba(254, 74, 62, 1)';
 export const boundaryDisputeColor = 'rgba(251, 255, 72, 0.8)';
 export const boundaryDisputeOutlineColor = 'rgba(254, 223, 62, 1)';
+
 export const TYPE_SOURCE = {
     default: {
         fill: {
@@ -287,15 +288,7 @@ export const CLAIMCHAIN_NUMBER = [
         value: 4,
     },
 ];
-export const getColors = ({ numberClaimchain, overlap }) => {
-    if (overlap) {
-        return {
-            fillColor: 'rgba(251, 255, 72, 0.3)',
-            outlineColor: 'rgba(254, 223, 62, 1)',
-            iconName: 'boundaryDispute',
-            iconSize: 0.2,
-        };
-    }
+export const getColors = ({ numberClaimchain }) => {
     if (numberClaimchain === 1) {
         return {
             fillColor: 'rgba(42, 184, 73, 0.4)',
@@ -325,26 +318,40 @@ export const getColors = ({ numberClaimchain, overlap }) => {
         };
     }
 };
-export const getPlotStatus = ({ numberClaimchain, plot, worthwhileNumber }) => {
-    if (plot?.isOwnershipDispute) {
-        return 2;
-    }
-    if (plot?.isBoundaryDispute) {
-        return 3;
-    }
-    if (plot?.isLocked) {
-        return 4;
-    }
-    if (plot?.isDefault) {
-        return 5;
-    }
-    if (plot?.isDisputed) {
-        return 6;
-    }
-    if (numberClaimchain < worthwhileNumber) {
-        return 1;
-    }
-    return 0;
+const STATUS_STRING_MAP_TO_NUMBER = {
+    'F&C': 0,
+    pending: 1,
+    disputed: 2,
+    locked: 4,
+    defaulted: 5,
+    inContract: 6,
+};
+const STATUS_STRING_MAP_TO_COLOR = {
+    locked: {
+        fillColor: '#61C7DF',
+        outlineColor: '#ffffff',
+        circleColor: '#61C7DF',
+        iconName: 'activeContract',
+    },
+    defaulted: {
+        fillColor: '#AD1457',
+        outlineColor: '#ffffff',
+        circleColor: '#AD1457',
+        iconName: 'defaultedContract',
+    },
+};
+
+export const getPlotStatus = ({ plot }) => {
+    return STATUS_STRING_MAP_TO_NUMBER[plot?.status] === undefined
+        ? 1
+        : STATUS_STRING_MAP_TO_NUMBER[plot?.status];
+};
+const CERTIFICATE_STATUS_STRING_MAP_TO_NUMBER = {
+    locked: 4,
+    defaulted: 5,
+};
+export const getCertificateStatus = (status) => {
+    return CERTIFICATE_STATUS_STRING_MAP_TO_NUMBER[status];
 };
 export const initPlot = (plot, index) => {
     if (!plot) return null;
@@ -460,6 +467,59 @@ export const initSource = ({
 export const deepClone = (object = {}) => {
     return JSON.parse(JSON.stringify(object));
 };
+export const getFillColor = (plot, defaultFillColor) => {
+    if (STATUS_STRING_MAP_TO_COLOR[plot.status]) {
+        return STATUS_STRING_MAP_TO_COLOR[plot.status].fillColor;
+    }
+    if (plot.isOwnershipDispute) {
+        return ownerShipDisputeColor;
+    }
+    if (plot.isBoundaryDispute) {
+        return boundaryDisputeColor;
+    }
+    return defaultFillColor;
+};
+export const getOutlineColor = (plot, defaultOutlineColor) => {
+    if (STATUS_STRING_MAP_TO_COLOR[plot.status]) {
+        return STATUS_STRING_MAP_TO_COLOR[plot.status].outlineColor;
+    }
+    if (plot.isOwnershipDispute) {
+        return ownerShipDisputeOutlineColor;
+    }
+    if (plot.isBoundaryDispute) {
+        return boundaryDisputeOutlineColor;
+    }
+    return defaultOutlineColor;
+};
+export const getIconName = (plot, defaultIconName) => {
+    if (STATUS_STRING_MAP_TO_COLOR[plot.status]) {
+        return STATUS_STRING_MAP_TO_COLOR[plot.status].iconName;
+    }
+    return defaultIconName;
+};
+export const getDataForRenderWithPlot = (plot, defaultData) => {
+    if (STATUS_STRING_MAP_TO_COLOR[plot.status]) {
+        return {
+            ...defaultData,
+            ...STATUS_STRING_MAP_TO_COLOR[plot.status],
+        };
+    }
+    if (plot.isOwnershipDispute) {
+        return {
+            ...defaultData,
+            fillColor: ownerShipDisputeColor,
+            outlineColor: ownerShipDisputeOutlineColor,
+        };
+    }
+    if (plot.isBoundaryDispute) {
+        return {
+            ...defaultData,
+            fillColor: boundaryDisputeColor,
+            outlineColor: boundaryDisputeOutlineColor,
+        };
+    }
+    return defaultData;
+};
 export const renderPublicPlot = ({
     claimchains = [],
     worthwhileNumber = 0,
@@ -473,6 +533,7 @@ export const renderPublicPlot = ({
         points = [],
         allUnion = [];
     claimchains.forEach((claimchain) => {
+        //get color data default with claimchain size
         let colors = getColors({
             numberClaimchain: claimchain.size,
         });
@@ -488,34 +549,23 @@ export const renderPublicPlot = ({
             }
 
             let _plot = deepClone(plot);
-
+            // get color data by plot status
+            const { fillColor, outlineColor, iconName } = getDataForRenderWithPlot(_plot, colors);
             _plot.properties = {
                 ...colors,
-                fillColor: _plot.isOwnershipDispute
-                    ? ownerShipDisputeColor
-                    : _plot.isBoundaryDispute
-                    ? boundaryDisputeColor
-                    : colors.fillColor,
-                outlineColor: _plot.isOwnershipDispute
-                    ? ownerShipDisputeOutlineColor
-                    : _plot.isBoundaryDispute
-                    ? boundaryDisputeOutlineColor
-                    : colors.outlineColor,
+                fillColor,
+                outlineColor,
                 claimchainSize: claimchain.size,
                 centroid: plot.centroid,
             };
             plots.push(_plot);
-
             if (claimchain.size > 1) {
                 points.push({
                     coordinates: _plot.centroid,
                     properties: {
                         ...colors,
-                        circleColor: _plot.isOwnershipDispute
-                            ? ownerShipDisputeColor
-                            : _plot.isBoundaryDispute
-                            ? boundaryDisputeColor
-                            : colors.circleColor,
+                        iconName,
+                        circleColor: fillColor,
                     },
                 });
             }
