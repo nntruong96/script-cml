@@ -321,7 +321,8 @@ export const getColors = ({ numberClaimchain }) => {
 const STATUS_STRING_MAP_TO_NUMBER = {
     'F&C': 0,
     pending: 1,
-    disputed: 2,
+    ownershipDispute: 2,
+    boundaryDispute: 3,
     locked: 4,
     defaulted: 5,
     inContract: 6,
@@ -338,6 +339,12 @@ const STATUS_STRING_MAP_TO_COLOR = {
         outlineColor: '#ffffff',
         circleColor: '#AD1457',
         iconName: 'defaultedContract',
+    },
+    inContract: {
+        fillColor: '#5E7BC4',
+        outlineColor: '#ffffff',
+        circleColor: '#5E7BC4',
+        iconName: 'activeContract',
     },
 };
 
