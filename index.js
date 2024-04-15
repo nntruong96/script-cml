@@ -341,13 +341,18 @@ const STATUS_STRING_MAP_TO_COLOR = {
         iconName: 'defaultedContract',
     },
     inContract: {
-        fillColor: '#5E7BC4',
+        fillColor: '#61C7DF',
         outlineColor: '#ffffff',
-        circleColor: '#5E7BC4',
+        circleColor: '#61C7DF',
         iconName: 'activeContract',
     },
+    // inContract: {
+    //     fillColor: '#5E7BC4',
+    //     outlineColor: '#ffffff',
+    //     circleColor: '#5E7BC4',
+    //     iconName: 'activeContract',
+    // },
 };
-
 export const getPlotStatus = ({ plot }) => {
     return STATUS_STRING_MAP_TO_NUMBER[plot?.status] === undefined
         ? 1
@@ -356,6 +361,7 @@ export const getPlotStatus = ({ plot }) => {
 const CERTIFICATE_STATUS_STRING_MAP_TO_NUMBER = {
     locked: 4,
     defaulted: 5,
+    'awaiting-locked': 4,
 };
 export const getCertificateStatus = (status) => {
     return CERTIFICATE_STATUS_STRING_MAP_TO_NUMBER[status];
